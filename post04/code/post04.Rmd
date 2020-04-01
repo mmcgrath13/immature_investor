@@ -1,0 +1,377 @@
+---
+title: "post04"
+author: "Mike McGrath"
+date: "3/31/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+### How have model portfolios held up after Q1 2020?
+
+We want to look at the returns (YTD, 1Y, 5Y) for different model portfolios. We will use different model portfolios to assess the performance over the respective periods. The model portfolios are based on YCharts Basic ETF Models.
+
+### Prepare data
+
+First, let's set our working directory and load some libraries we might need.
+
+```{r}
+
+# set working directory
+setwd("~/Desktop/immature_investor/post04")
+
+# load libraries
+library(dplyr)
+library(tidyverse)
+library(tibbletime)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(readxl)
+library(quantmod)
+library(PortfolioAnalytics)
+library(purrr)
+library(BatchGetSymbols)
+library(ggrepel)
+
+```
+
+Now let's import and explore our data.
+
+```{r}
+
+# import data
+all_stocks <- 
+  read_excel("model_portfolios.xlsm", sheet = "100")
+head(all_stocks)
+
+eighty_twenty <- 
+  read_excel("model_portfolios.xlsm", sheet = "80-20")
+head(eighty_twenty)
+
+sixty_forty <- 
+  read_excel("model_portfolios.xlsm", sheet = "60-40")
+head(sixty_forty)
+
+forty_sixty <- 
+  read_excel("model_portfolios.xlsm", sheet = "40-60")
+head(forty_sixty)
+
+twenty_eighty <- 
+  read_excel("model_portfolios.xlsm", sheet = "20-80")
+head(twenty_eighty)
+
+all_bonds <- 
+  read_excel("model_portfolios.xlsm", sheet = "100")
+head(all_bonds)
+
+```
+
+### Calculate Returns
+
+Now that we have imported our model portfolios, let's gather historical data returns. We can simply change the 'from' date for each period we want to look at.
+
+All Stocks...
+
+```{r}
+
+# set up symbols and respective weights
+all_stocks_symbols <- c("VTI", "VXUS", "0P0000MO5E.TO")
+all_stocks_weights <- c(.588, .392, .02)
+
+# find historical prices
+all_stocks_prices <- NULL
+for (all_stocks_symbols in all_stocks_symbols) {
+all_stocks_prices = cbind(all_stocks_prices,
+                        getSymbols.yahoo(all_stocks_symbols,
+                        from = "2015-03-31",
+                        periodicity = "daily",
+                        auto.assign = FALSE) [, 6])
+}
+head(all_stocks_prices)
+
+# calculate returns
+all_stocks_returns <-
+  na.omit(ROC(all_stocks_prices))
+head(all_stocks_returns)
+
+# find portfolio returns
+all_stocks_portfolio_returns <- 
+  Return.portfolio(all_stocks_returns, weights = all_stocks_weights, rebalance_on = "years")
+
+all_stocks_results <-
+  all_stocks_portfolio_returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index", daily_return = "portfolio.returns") %>%
+  mutate(cum_returns1 = 1 + cumsum(daily_return)) 
+
+# visualize to check calculations
+plot.ts(all_stocks_results$cum_returns1)
+
+```
+
+80/20...
+
+```{r}
+
+# set up symbols and respective weights
+eighty_twenty_symbols <- c("VTI", "VXUS", "BND", "BNDX", "0P0000MO5E.TO")
+eighty_twenty_weights <- c(.47, .314, .137, .059, .02)
+
+# find historical prices
+eighty_twenty_prices <- NULL
+for (eighty_twenty_symbols in eighty_twenty_symbols) {
+eighty_twenty_prices = cbind(eighty_twenty_prices,
+                        getSymbols.yahoo(eighty_twenty_symbols,
+                        from = "2015-03-31",
+                        periodicity = "daily",
+                        auto.assign = FALSE) [, 6])
+}
+head(eighty_twenty_prices)
+
+# calculate returns
+eighty_twenty_returns <-
+  na.omit(ROC(eighty_twenty_prices))
+head(eighty_twenty_returns)
+
+# find portfolio returns
+eighty_twenty_portfolio_returns <- 
+  Return.portfolio(eighty_twenty_returns, weights = eighty_twenty_weights, rebalance_on = "years")
+
+eighty_twenty_results <-
+  eighty_twenty_portfolio_returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index", daily_return = "portfolio.returns") %>%
+  mutate(cum_returns2 = 1 + cumsum(daily_return)) 
+
+# visualize to check calculations
+plot.ts(eighty_twenty_results$cum_returns2)
+
+# look at a quick plot of the two cumulative portfolio returns we have aready done to confirm method
+all_stocks_results %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = cum_returns1), color = "red") +
+  geom_line(data = eighty_twenty_results, aes(y = cum_returns2), color = "blue")
+
+
+```
+
+60/40...
+
+```{r}
+
+# set up symbols and respective weights
+sixty_forty_symbols <- c("VTI", "BND", "VXUS", "BNDX", "0P0000MO5E.TO")
+sixty_forty_weights <- c(.353, .274, .235, .118, .02)
+
+# find historical prices
+sixty_forty_prices <- NULL
+for (sixty_forty_symbols in sixty_forty_symbols) {
+sixty_forty_prices = cbind(sixty_forty_prices,
+                        getSymbols.yahoo(sixty_forty_symbols,
+                        from = "2015-03-31",
+                        periodicity = "daily",
+                        auto.assign = FALSE) [, 6])
+}
+head(sixty_forty_prices)
+
+# calculate returns
+sixty_forty_returns <-
+  na.omit(ROC(sixty_forty_prices))
+head(sixty_forty_returns)
+
+# find portfolio returns
+sixty_forty_portfolio_returns <- 
+  Return.portfolio(sixty_forty_returns, weights = sixty_forty_weights, rebalance_on = "years")
+
+sixty_forty_results <-
+  sixty_forty_portfolio_returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index", daily_return = "portfolio.returns") %>%
+  mutate(cum_returns3 = 1 + cumsum(daily_return)) 
+
+# visualize to check calculations
+plot.ts(sixty_forty_results$cum_returns3)
+
+```
+
+40/60...
+
+```{r}
+
+# set up symbols and respective weights
+forty_sixty_symbols <- c("BND", "VTI", "BNDX", "VXUS", "0P0000MO5E.TO")
+forty_sixty_weights <- c(.412, .235, .176, .157, .02)
+
+# find historical prices
+forty_sixty_prices <- NULL
+for (forty_sixty_symbols in forty_sixty_symbols) {
+forty_sixty_prices = cbind(forty_sixty_prices,
+                        getSymbols.yahoo(forty_sixty_symbols,
+                        from = "2015-03-31",
+                        periodicity = "daily",
+                        auto.assign = FALSE) [, 6])
+}
+head(forty_sixty_prices)
+
+# calculate returns
+forty_sixty_returns <-
+  na.omit(ROC(forty_sixty_prices))
+head(forty_sixty_returns)
+
+# find portfolio returns
+forty_sixty_portfolio_returns <- 
+  Return.portfolio(forty_sixty_returns, weights = forty_sixty_weights, rebalance_on = "years")
+
+forty_sixty_results <-
+  forty_sixty_portfolio_returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index", daily_return = "portfolio.returns") %>%
+  mutate(cum_returns4 = 1 + cumsum(daily_return)) 
+
+# visualize to check calculations
+plot.ts(forty_sixty_results$cum_returns4)
+
+```
+
+20/80...
+
+```{r}
+
+# set up symbols and respective weights
+twenty_eighty_symbols <- c("BND", "BNDX", "VTI", "VXUS", "0P0000MO5E.TO")
+twenty_eighty_weights <- c(.549, .235, .118, .078, .02)
+
+# find historical prices
+twenty_eighty_prices <- NULL
+for (twenty_eighty_symbols in twenty_eighty_symbols) {
+twenty_eighty_prices = cbind(twenty_eighty_prices,
+                        getSymbols.yahoo(twenty_eighty_symbols,
+                        from = "2015-03-31",
+                        periodicity = "daily",
+                        auto.assign = FALSE) [, 6])
+}
+head(twenty_eighty_prices)
+
+# calculate returns
+twenty_eighty_returns <-
+  na.omit(ROC(twenty_eighty_prices))
+head(twenty_eighty_returns)
+
+# find portfolio returns
+twenty_eighty_portfolio_returns <- 
+  Return.portfolio(twenty_eighty_returns, weights = twenty_eighty_weights, rebalance_on = "years")
+
+twenty_eighty_results <-
+  twenty_eighty_portfolio_returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index", daily_return = "portfolio.returns") %>%
+  mutate(cum_returns5 = 1 + cumsum(daily_return)) 
+
+# visualize to check calculations
+plot.ts(twenty_eighty_results$cum_returns5)
+
+```
+
+All Bonds...
+
+```{r}
+
+# set up symbols and respective weights
+all_bonds_symbols <- c("BND", "BNDX", "0P0000MO5E.TO")
+all_bonds_weights <- c(.686, .294, .02)
+
+# find historical prices
+all_bonds_prices <- NULL
+for (all_bonds_symbols in all_bonds_symbols) {
+all_bonds_prices = cbind(all_bonds_prices,
+                        getSymbols.yahoo(all_bonds_symbols,
+                        from = "2015-03-31",
+                        periodicity = "daily",
+                        auto.assign = FALSE) [, 6])
+}
+head(all_bonds_prices)
+
+# calculate returns
+all_bonds_returns <-
+  na.omit(ROC(all_bonds_prices))
+head(all_bonds_returns)
+
+# find portfolio returns
+all_bonds_portfolio_returns <- 
+  Return.portfolio(all_bonds_returns, weights = all_bonds_weights, rebalance_on = "years")
+
+all_bonds_results <-
+  all_bonds_portfolio_returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index", daily_return = "portfolio.returns") %>%
+  mutate(cum_returns6 = 1 + cumsum(daily_return)) 
+
+# visualize to check calculations
+plot.ts(all_bonds_results$cum_returns6)
+
+```
+
+### Plot All Models
+
+```{r}
+
+# set ggplot theme
+mike_mcgrath_theme = theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5, family = "Times New Roman"),
+                           panel.background = element_rect(fill = "white"),
+                           plot.caption = element_text(hjust = 0, family = "Times New Roman"),
+                           axis.line = element_line(colour = "black"),
+                           axis.text = element_text(colour = "black", family = "Times New Roman"),
+                           axis.title = element_text(colour = "black", family = "Times New Roman"),
+                           axis.ticks.length = unit(.20, "cm"),
+                           panel.grid.major.y = element_line(colour = "#CCCCCC"))
+
+# set captions
+source_string = paste0("Data source: Yahoo Finance (theimmatureinvestor.wordpress.com)")
+note_string = paste0("Note: Diversified portfolios are based on basic ETF models. Portfolios are rebalanced
+on an annual basis. No contributions and no withdrawls are assumed.")
+
+# set colors
+color <- c("100/0" = "orchid",
+           "80/20" = "gold",
+           "60/40" = "steelblue",
+           "40/60" = "lawngreen",
+           "20/80" = "deeppink",
+           "0/100" = "darkorange")
+
+# plot
+all_stocks_results %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = cum_returns1-1, color = "100/0")) +
+  geom_line(data = eighty_twenty_results, aes(y = cum_returns2-1, color = "80/20")) +
+  geom_line(data = sixty_forty_results, aes(y = cum_returns3-1, color = "60/40")) +
+  geom_line(data = forty_sixty_results, aes(y = cum_returns4-1, color = "40/60")) +
+  geom_line(data = twenty_eighty_results, aes(y = cum_returns5-1, color = "20/80")) +
+  geom_line(data = all_bonds_results, aes(y = cum_returns6-1, color = "0/100")) +
+  mike_mcgrath_theme +
+  theme(axis.text.x = element_text(angle = 0),
+        axis.ticks.x = element_blank(),
+        legend.key = element_rect("white"),
+        legend.title = element_blank(),
+        legend.text = element_text(family = "Times New Roman"),
+        legend.position = "top") +
+  labs(title = "Diversified Portfolio Returns 5Y",
+       x = "", 
+       y = "Cumulative Return",
+       caption = paste0(source_string, "\n", note_string, "\n")) +
+  scale_x_date(breaks = date_breaks("years"), 
+               labels = date_format("%b %Y")) +
+  scale_y_continuous(labels = percent_format()) 
+
+```
+
+
+
+
+
