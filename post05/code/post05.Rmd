@@ -1,0 +1,79 @@
+---
+title: "post05"
+author: "Mike McGrath"
+date: "4/3/2020"
+output: html_document
+---
+
+### Load Libraries
+
+```{r}
+
+# load libraries
+library(quantmod)
+library(ggplot2)
+library(gganimate)
+
+```
+
+### Import Data
+
+```{r}
+
+# import data
+getSymbols("ICSA", src = "FRED")
+head(ICSA)
+
+```
+
+### Plot
+
+```{r}
+
+# set theme
+mike_mcgrath_theme = theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5, family = "Times New Roman"),
+                           panel.background = element_rect(fill = "white"),
+                           plot.caption = element_text(hjust = 0, family = "Times New Roman"),
+                           axis.line = element_line(colour = "black"),
+                           axis.text = element_text(colour = "black", family = "Times New Roman"),
+                           axis.title = element_text(colour = "black", family = "Times New Roman"),
+                           axis.ticks.length = unit(.20, "cm"))
+
+# set caption
+source_string = paste0("Data source: FRED (theimmatureinvestor.wordpress.com)")
+
+# create a date dummy
+df <-
+  data.frame(Date = time(ICSA), value = ICSA) %>% 
+  mutate(ind = ifelse(Date >= max(Date) - 1, Date+2500, Date))   
+
+# plot
+plot <-
+  df %>%
+  fortify() %>%
+  ggplot(aes(x = Date)) +
+  geom_line(aes(y = ICSA), color = "blue") +
+  geom_area(aes(y = ICSA), fill = "blue") +
+  mike_mcgrath_theme +
+  theme(axis.text.x = element_text(angle = 0),
+        axis.ticks.x = element_blank()) +
+  labs(title = "Initial Jobless Claims (1967-2020)",
+       x = "",
+       y = "Number",
+       caption = paste0("\n", source_string, "\n")) +
+  scale_x_date(labels = date_format("%Y"),
+               expand = c(0,0)) +
+  scale_y_continuous(labels = comma_format(),
+                     expand = c(0,0),
+                     limits = c(0, 7000000)) +
+  view_follow() +
+  transition_reveal(ind) 
+
+# animate
+anim <- animate(plot, end_pause = 25, nframes = 150)
+
+# save animation
+animate(nations_plot, renderer = ffmpeg_renderer(), width = 800, height = 450)
+anim_save("nations.mp4")
+
+```
