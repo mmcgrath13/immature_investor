@@ -1,0 +1,192 @@
+---
+title: "post06"
+author: "Mike McGrath"
+date: "4/7/2020"
+output: html_document
+---
+
+### Eauity Style Performance After A Recession
+
+### Set Working Directory & Load Libraries
+
+```{r}
+
+# set wd
+setwd("~/Desktop/immature_investor/post06")
+
+# load libraries
+library(dplyr)
+library(tidyverse)
+library(tibbletime)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(readxl)
+library(quantmod)
+library(PortfolioAnalytics)
+library(purrr)
+library(gganimate)
+
+```
+
+### Import/Manipulate Data
+
+```{r}
+
+# import data
+symbols <- c("^GSPC", "^RUT")
+
+values <- NULL
+for (symbols in symbols) {
+values = cbind(values,
+               getSymbols.yahoo(symbols,
+               from = "1990-01-01",
+               periodicity = "monthly", 
+               auto.assign = FALSE) [, 6])
+}
+head(values)
+
+# calculate returns
+returns <-
+  na.omit(ROC(values))
+head(returns)
+
+results <-
+  returns %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index",
+         sp = "GSPC.Adjusted",
+         russ = "RUT.Adjusted") %>%
+  mutate(date = as.Date(date),
+         sp_tr = 1 + cumsum(sp), 
+         russ_tr = 1 + cumsum(russ)) 
+head(results)
+
+
+```
+
+### Indexes Since 1990
+
+```{r}
+
+# import data
+symbols <- c("^GSPC", "^RUT")
+
+
+values <- NULL
+for (symbols in symbols) {
+values = cbind(values,
+               getSymbols.yahoo(symbols,
+               from = "1990-01-01",
+               periodicity = "monthly", 
+               auto.assign = FALSE) [, 6])
+}
+head(values)
+
+# set ggplot theme
+mike_mcgrath_theme = theme(plot.title = element_text(face = "bold", size = 20, hjust = 0.5, family = "Times New Roman"),
+                           panel.background = element_rect(fill = "white"),
+                           plot.caption = element_text(hjust = 0, family = "Times New Roman"),
+                           axis.line = element_line(colour = "black"),
+                           axis.text = element_text(colour = "black", family = "Times New Roman"),
+                           axis.title = element_text(colour = "black", family = "Times New Roman"),
+                           axis.ticks.length = unit(.20, "cm"),
+                           panel.grid.major.y = element_line(colour = "#CCCCCC"))
+
+# set captions
+source_string = paste0("Data source: Yahoo Finance (theimmatureinvestor.wordpress.com)")
+
+# plot
+values %>%
+  fortify() %>%
+  na.omit() %>%
+  rename(date = "Index",
+         sp = "GSPC.Adjusted",
+         russ = "RUT.Adjusted") %>%
+  mutate(date = as.Date(date)) %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = sp), color = "navy", size = 1) +
+  geom_line(aes(y = russ*1.875), color = "deepskyblue", size = 1) +
+  mike_mcgrath_theme +
+  theme(axis.text.x = element_text(angle = 45),
+        axis.ticks.x = element_blank(), 
+        axis.title.y.left = element_text(color = "navy"),
+        axis.title.y.right = element_text(color = "deepskyblue")) +
+  labs(title = "Small-Caps vs Large-Caps Since 1990", 
+       x = "",
+       y = "S&P 500 Index",
+       caption = paste0(source_string, "\n")) +
+  scale_x_date(breaks = date_breaks("2 years"),
+               labels = date_format("%Y")) +
+  # add second axis
+  scale_y_continuous(sec.axis = sec_axis(~./1.875, name = "Russell 2000 Index"), 
+                     expand = c(0,0))
+
+```
+
+### Small-Cap Outperformance & Underperformance
+
+```{r}
+
+# set ggplot theme
+mike_mcgrath_theme = theme(plot.title = element_text(face = "bold", size = 20, hjust = 0.5, family = "Times New Roman"),
+                           panel.background = element_rect(fill = "white"),
+                           plot.caption = element_text(hjust = 0, family = "Times New Roman"),
+                           axis.line = element_line(colour = "black"),
+                           axis.text = element_text(colour = "black", family = "Times New Roman"),
+                           axis.title = element_text(colour = "black", family = "Times New Roman"),
+                           axis.ticks.length = unit(.20, "cm"),
+                           panel.grid.major.y = element_line(colour = "#CCCCCC"))
+
+# set captions
+source_string = paste0("Data source: Yahoo Finance (theimmatureinvestor.wordpress.com)")
+
+# plot
+  results %>%
+  mutate(over_under = russ_tr - sp_tr) %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = russ_tr - sp_tr), color = "black", size = 1) +
+  geom_ribbon(aes(ymin = 0, ymax = pmax(over_under, 0)), fill = "palegreen", alpha = 0.3) +
+  geom_ribbon(aes(ymin = pmin(over_under, 0), ymax = 0), fill = "palevioletred", alpha = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  mike_mcgrath_theme +
+  theme(axis.text.x = element_text(angle = 45),
+        axis.ticks.x = element_blank()) +
+  labs(title = "Small-Cap Outperformance & Underperformance\nSince 1990",
+       x = "", 
+       y = "",
+       caption = paste0(source_string, "\n")) +
+  scale_x_date(breaks = date_breaks("2 years"), 
+               labels = date_format("%Y")) +
+  scale_y_continuous(labels = percent_format())
+
+# recession rects
+start = as.Date(c("1990-07-01", "2001-03-01", "2007-12-01"))
+end = as.Date(c("1991-03-01", "2001-11-01", "2009-06-01"))
+
+start_end = data.frame(start, end)
+
+to_plot <-
+  results %>%
+  mutate(over_under = russ_tr - sp_tr)
+
+ggplot() +
+  geom_line(data = to_plot, aes(x = date, y = over_under), color = "black", size = 1) +
+  geom_ribbon(data = to_plot, aes(x = date, ymin = 0, ymax = pmax(over_under, 0)), fill = "palegreen", alpha = 0.3) +
+  geom_ribbon(data = to_plot, aes(x = date, ymin = pmin(over_under, 0), ymax = 0), fill = "palevioletred", alpha = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  geom_rect(data = start_end, aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            fill = "black", alpha = 0.2) +
+  mike_mcgrath_theme +
+  theme(axis.text.x = element_text(angle = 45),
+        axis.ticks.x = element_blank()) +
+  labs(title = "Small-Cap Outperformance & Underperformance\nSince 1990",
+       x = "", 
+       y = "",
+       caption = paste0(source_string, "\n")) +
+  scale_x_date(breaks = date_breaks("2 years"), 
+               labels = date_format("%Y")) +
+  scale_y_continuous(labels = percent_format()) 
+  
+```
